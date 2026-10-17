@@ -359,7 +359,39 @@ try {
 
     let renderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-    catch (error) { throw new Error('WebGL을 사용할 수 없습니다. 브라우저의 그래픽 설정을 확인해주세요.'); }
+        catch (error) {
+      // Keep the compass usable when a browser/GPU cannot create a WebGL context.
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 그래픽을 사용할 수 없습니다.');
+      canvas.setAttribute('aria-label', '2D 호환 나침반');
+      const note = document.createElement('p');
+      note.textContent = '2D 호환 화면 · 이 브라우저는 3D 그래픽을 지원하지 않아요';
+      Object.assign(note.style,{position:'absolute',bottom:'4px',width:'100%',textAlign:'center',fontSize:'11px',color:'#fcd34d',pointerEvents:'none'});
+      container.appendChild(note);
+      let width=0,height=0,ratio=1;
+      renderer = {
+        domElement: canvas, shadowMap: {},
+        setPixelRatio(value) { ratio=value; this.setSize(width,height); },
+        setSize(w,h) { width=w;height=h;canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);canvas.style.width=`${w}px`;canvas.style.height=`${h}px`; },
+        render() {
+          ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);
+          const x=width/2,y=height/2,r=Math.max(30,Math.min(width,height)*0.40);
+          const themeKey=document.querySelector('.theme-btn.relic-btn-active')?.getAttribute('data-theme') || 'solar';
+          const color=THEMES[themeKey].dialGold;
+          ctx.save();ctx.translate(x,y);
+          const glow=ctx.createRadialGradient(0,0,r*.2,0,0,r);glow.addColorStop(0,'#292016');glow.addColorStop(1,'#08070c');
+          ctx.fillStyle=glow;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+          ctx.rotate(-currentHeading*Math.PI/180);
+          for(let deg=0;deg<360;deg+=5){const a=deg*Math.PI/180;ctx.beginPath();ctx.moveTo(Math.sin(a)*r*.96,-Math.cos(a)*r*.96);ctx.lineTo(Math.sin(a)*r*(deg%45===0?.80:.89),-Math.cos(a)*r*(deg%45===0?.80:.89));ctx.lineWidth=deg%45===0?2:1;ctx.stroke();}
+          ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`bold ${Math.max(12,r*.14)}px system-ui`;
+          ['N','NE','E','SE','S','SW','W','NW'].forEach((label,i)=>{const a=i*Math.PI/4;ctx.fillStyle=i===0?'#ff627d':color;ctx.fillText(label,Math.sin(a)*r*.69,-Math.cos(a)*r*.69);});
+          ctx.fillStyle='#ff2a4b';ctx.beginPath();ctx.moveTo(0,-r*.50);ctx.lineTo(r*.10,r*.09);ctx.lineTo(0,0);ctx.lineTo(-r*.10,r*.09);ctx.closePath();ctx.fill();
+          ctx.fillStyle='#38bdf8';ctx.beginPath();ctx.moveTo(0,r*.50);ctx.lineTo(-r*.10,-r*.09);ctx.lineTo(0,0);ctx.lineTo(r*.10,-r*.09);ctx.closePath();ctx.fill();ctx.restore();
+        }
+      };
+    }
+
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;

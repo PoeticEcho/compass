@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Compass · 아스트라 3D 탐험 나침반</title>
+  <meta name="description" content="기기 센서로 방향을 살펴보고, 8방위 보물 미션으로 배우는 3D 탐험 나침반. 센서 없이도 수동 탐험을 즐길 수 있습니다.">
+  <meta name="theme-color" content="#08070c">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <script src="./assets/three-r128.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700;900&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body class="relative w-full h-full overflow-hidden select-none">
+
+  <!-- Background Mystical Aura & Ancient Astronomical SVG Rings -->
+  <div id="bg-aura" class="fixed inset-0 pointer-events-none z-0"></div>
+
+  <svg class="fixed top-1/2 left-1/2 w-[92vmin] h-[92vmin] max-w-[780px] max-h-[780px] pointer-events-none z-0 opacity-20 rune-ring-cw" viewBox="0 0 500 500">
+    <circle cx="250" cy="250" r="240" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="6 8" />
+    <circle cx="250" cy="250" r="224" fill="none" stroke="#f59e0b" stroke-width="1.5" />
+    <polygon points="250,15 295,195 485,250 295,305 250,485 205,305 15,250 205,195" fill="none" stroke="#d97706" stroke-width="0.8" opacity="0.6" />
+    <rect x="90" y="90" width="320" height="320" fill="none" stroke="#fbbf24" stroke-width="0.7" transform="rotate(45 250 250)" opacity="0.5" />
+    <rect x="90" y="90" width="320" height="320" fill="none" stroke="#fbbf24" stroke-width="0.7" opacity="0.5" />
+  </svg>
+
+  <svg class="fixed top-1/2 left-1/2 w-[72vmin] h-[72vmin] max-w-[600px] max-h-[600px] pointer-events-none z-0 opacity-15 rune-ring-ccw" viewBox="0 0 400 400">
+    <circle cx="200" cy="200" r="190" fill="none" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="16 10 4 10" />
+    <circle cx="200" cy="200" r="170" fill="none" stroke="#f59e0b" stroke-width="0.8" />
+  </svg>
+
+  <!-- Ornate Screen Corner Frames -->
+  <svg class="corner-ornament top-2 left-2" viewBox="0 0 60 60">
+    <path d="M4 56 L4 14 Q4 4 14 4 L56 4" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+    <path d="M10 44 L10 16 Q10 10 16 10 L44 10" fill="none" stroke="#fbbf24" stroke-width="1"/>
+    <circle cx="14" cy="14" r="3" fill="#fde68a"/>
+  </svg>
+  <svg class="corner-ornament top-2 right-2" style="transform: scaleX(-1);" viewBox="0 0 60 60">
+    <path d="M4 56 L4 14 Q4 4 14 4 L56 4" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+    <path d="M10 44 L10 16 Q10 10 16 10 L44 10" fill="none" stroke="#fbbf24" stroke-width="1"/>
+    <circle cx="14" cy="14" r="3" fill="#fde68a"/>
+  </svg>
+  <svg class="corner-ornament bottom-2 left-2" style="transform: scaleY(-1);" viewBox="0 0 60 60">
+    <path d="M4 56 L4 14 Q4 4 14 4 L56 4" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+    <path d="M10 44 L10 16 Q10 10 16 10 L44 10" fill="none" stroke="#fbbf24" stroke-width="1"/>
+    <circle cx="14" cy="14" r="3" fill="#fde68a"/>
+  </svg>
+  <svg class="corner-ornament bottom-2 right-2" style="transform: scale(-1, -1);" viewBox="0 0 60 60">
+    <path d="M4 56 L4 14 Q4 4 14 4 L56 4" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+    <path d="M10 44 L10 16 Q10 10 16 10 L44 10" fill="none" stroke="#fbbf24" stroke-width="1"/>
+    <circle cx="14" cy="14" r="3" fill="#fde68a"/>
+  </svg>
+
+  <!-- 3D Three.js Canvas Container -->
+  <div aria-label="3D 나침반. 화면 위쪽은 기기의 진행 기준 방향입니다." id="canvas-container" class="fixed inset-0 z-10 cursor-grab active:cursor-grabbing"></div>
+
+  <!-- Floating Minimal Toggle Button (Always visible so user can bring back HUD in Fullscreen) -->
+  <div class="fixed top-3 right-3 z-40 flex items-center gap-2">
+    <button id="btn-toggle-hud" type="button" class="relic-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-200 flex items-center gap-1.5" title="화면 메뉴 숨기기/보이기">
+      <span id="hud-eye-icon">👁️</span>
+      <span id="hud-toggle-label" class="hidden sm:inline">유물만 보기</span>
+    </button>
+    <button id="btn-fullscreen" type="button" class="relic-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-200 flex items-center gap-1.5" title="전체화면 전환">
+      <span id="fs-icon">⛶</span>
+      <span id="fs-label">전체화면</span>
+    </button>
+  </div>
+
+  <!-- TOP HUD: Relic Title, Live Heading Readout, Guardians & Controls -->
+  <header id="hud-top" class="fixed top-0 left-0 right-0 z-20 p-3 sm:p-4 pointer-events-none flex flex-col items-center">
+    <div class="w-full max-w-5xl flex flex-wrap items-center justify-between gap-2 pointer-events-auto pr-28 sm:pr-44">
+      <!-- Brand / Artifact Title -->
+      <div class="relic-panel px-3.5 py-2 rounded-2xl flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-xl shadow-inner">
+          🧭
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-cinzel text-sm sm:text-base font-bold tracking-wider text-amber-300">COMPASS · ASTRA</h1>
+            <span id="gps-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/90 border border-amber-400/50 text-amber-200 font-semibold">📍 위치 꺼짐</span>
+            <span id="sensor-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-900/70 border border-amber-400/40 text-amber-200 font-semibold">🎮 수동 탐험</span>
+          </div>
+          <p id="gps-coord-readout" class="text-[11px] text-cyan-200/90 font-mono">위치는 선택 사항 · 방향은 기기 센서 기준입니다</p>
+        </div>
+      </div>
+
+      <!-- Quick Utility Controls: Sound, Sensor, Relic Theme -->
+      <div class="flex items-center gap-1.5 sm:gap-2"><a class="relic-btn px-3 py-2 rounded-xl text-xs" href="./about.html" aria-label="앱 소개 및 사용법">소개</a>
+        <button id="btn-sensor" type="button" class="relic-btn px-3 py-2 rounded-xl text-xs font-bold text-cyan-200 flex items-center gap-1.5" title="GPS 위치 및 나침반 방위 센서 권한 요청">
+          <span>📡</span>
+          <span>센서 연동</span>
+        </button>
+        <button id="btn-sound" type="button" class="relic-btn px-3 py-2 rounded-xl text-xs font-bold text-amber-200 flex items-center gap-1.5" title="고대 유물 효과음 켜기/끄기">
+          <span id="sound-icon">🔇</span>
+          <span id="sound-label" class="hidden md:inline">음소거</span>
+        </button>
+        <button id="btn-awakening" type="button" class="relic-btn px-3 py-2 rounded-xl text-xs font-bold text-amber-300 flex items-center gap-1.5" title="유물 마법 각성 이펙트 발동!">
+          <span>✨</span>
+          <span class="hidden sm:inline">유물 각성</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Center Direction Telemetry Banner -->
+    <div class="mt-2 sm:mt-3 pointer-events-auto">
+      <div class="relic-panel px-5 py-2.5 rounded-2xl flex items-center gap-4 sm:gap-6 border-amber-400/50">
+        <!-- Guardian Symbol -->
+        <div class="flex items-center gap-2.5">
+          <div id="guardian-icon" class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-amber-900/40 border border-amber-300/60 flex items-center justify-center text-2xl sm:text-3xl shadow-lg mana-pulse">
+            🐢
+          </div>
+          <div>
+            <div class="text-[10px] uppercase tracking-widest text-amber-300/80 font-semibold">방위 수호신</div>
+            <div id="guardian-name" class="text-sm sm:text-base font-black text-amber-100">북방 현무 (玄武)</div>
+          </div>
+        </div>
+
+        <div class="h-9 w-px bg-amber-500/30"></div>
+
+        <!-- Big Degree & Cardinal Readout -->
+        <div class="text-center min-w-[110px]">
+          <div class="flex items-baseline justify-center gap-1.5">
+            <span id="heading-deg" class="font-orbitron text-2xl sm:text-4xl font-extrabold text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]">0°</span>
+            <span id="heading-dir-en" class="font-cinzel text-lg sm:text-2xl font-black text-white">N</span>
+          </div>
+          <div id="heading-dir-ko" class="text-xs sm:text-sm font-bold text-amber-200/90">정북쪽 (North)</div>
+        </div>
+
+        <div class="h-9 w-px bg-amber-500/30 hidden sm:block"></div>
+
+        <!-- Ancient Relic Power / Tilt Gauge -->
+        <div class="hidden sm:flex flex-col items-end">
+          <span class="text-[10px] uppercase tracking-wider text-amber-300/80 font-semibold">북쪽 정렬 · 게임 효과</span>
+          <div class="w-28 h-2.5 bg-slate-900/90 rounded-full overflow-hidden border border-amber-500/40 mt-1">
+            <div id="resonance-bar" class="h-full bg-gradient-to-r from-amber-500 via-yellow-300 to-cyan-400 transition-all duration-150" style="width: 100%;"></div>
+          </div>
+          <span id="resonance-status" class="text-[11px] text-amber-200 mt-0.5 font-medium">북극성 에너지 100% 정렬</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="heading-marker" aria-hidden="true">▼<br><span>기기 앞쪽</span></div>
+  <!-- SIDE / FLOATING QUEST & LORE PANEL -->
+  <aside id="hud-side" class="fixed left-3 right-3 sm:left-4 sm:right-auto bottom-[148px] sm:bottom-auto sm:top-44 sm:w-80 z-20 pointer-events-none flex flex-col gap-2.5">
+    <!-- Lore & Discovery Card -->
+    <div class="relic-panel p-3.5 rounded-2xl pointer-events-auto">
+      <div class="flex items-center justify-between mb-1.5">
+        <span id="lore-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200">
+          🏛️ 고대 유물 도감 · 0° N
+        </span>
+        <button id="btn-quest-mode" type="button" class="relic-btn px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-300 flex items-center gap-1">
+          <span>🗺️</span>
+          <span id="quest-btn-text">보물 미션 시작</span>
+        </button>
+      </div>
+      <h2 id="lore-title" class="text-sm sm:text-base font-extrabold text-amber-100 mb-1">
+        북극성과 현무의 얼음 신전
+      </h2>
+      <p id="lore-desc" class="text-xs text-amber-100/85 leading-relaxed">
+        나침반의 빨간 태양 바늘(N극)은 언제나 북쪽을 가리켜요! 지구가 거대한 자석이기 때문이죠. 옛날 탐험가들은 밤하늘의 북극성과 나침반을 함께 보며 바다를 건넜답니다.
+      </p>
+
+      <!-- Active Treasure Hunt Mission Box (Hidden until toggled or active) -->
+      <div id="quest-box" class="mt-2.5 pt-2.5 border-t border-amber-500/30 hidden">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="font-bold text-cyan-300 flex items-center gap-1">
+            <span>💎</span>
+            <span id="quest-target-title">미션: 숨겨진 유물을 찾아라!</span>
+          </span>
+          <span id="quest-score" class="text-[11px] font-bold text-amber-300">발견: 0 / 8</span>
+        </div>
+        <p id="quest-instruction" class="text-xs text-cyan-100/90 mb-2">
+          나침반을 돌려 <strong class="text-amber-300">동쪽 (90° E)</strong>의 청룡 유적을 조준하세요!
+        </p>
+        <div class="flex items-center gap-2">
+          <button id="btn-unlock-relic" type="button" class="w-full py-1.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-600 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 transition">
+            🔓 현재 방위에서 유물 봉인 해제!
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM HUD: Interactive Rotation Controls, Cardinal Shortcuts & Relic Themes -->
+  <footer id="hud-bottom" class="fixed bottom-0 left-0 right-0 z-20 p-3 sm:p-4 pointer-events-none flex flex-col items-center">
+    <div class="w-full max-w-3xl relic-panel p-3 sm:p-4 rounded-2xl pointer-events-auto flex flex-col gap-2.5">
+      <!-- Top Row: Slider + Auto Explore Toggle -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-bold text-amber-200 whitespace-nowrap flex items-center gap-1">
+          <span>⚙️</span>
+          <span class="hidden sm:inline">방위각 다이얼</span>
+        </span>
+        <input id="heading-slider" type="range" min="0" max="359" value="0" class="relic-slider flex-1" aria-label="나침반 방위각 조절" />
+        <button id="btn-auto-spin" type="button" class="relic-btn px-3 py-1.5 rounded-xl text-xs font-bold text-amber-200 whitespace-nowrap flex items-center gap-1">
+          <span id="auto-spin-icon">🔄</span>
+          <span id="auto-spin-text">자동 탐험</span>
+        </button>
+      </div>
+
+      <!-- Bottom Row: 8-Direction Quick Jump & 3 Relic Themes -->
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <!-- Cardinal & Intercardinal Buttons -->
+        <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+          <button type="button" data-heading="0" class="dir-jump-btn relic-btn relic-btn-active px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-100">북 N</button>
+          <button type="button" data-heading="45" class="dir-jump-btn relic-btn px-2 py-1.5 rounded-lg text-xs font-semibold text-amber-200/90">북동 NE</button>
+          <button type="button" data-heading="90" class="dir-jump-btn relic-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-100">동 E</button>
+          <button type="button" data-heading="135" class="dir-jump-btn relic-btn px-2 py-1.5 rounded-lg text-xs font-semibold text-amber-200/90">남동 SE</button>
+          <button type="button" data-heading="180" class="dir-jump-btn relic-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-100">남 S</button>
+          <button type="button" data-heading="225" class="dir-jump-btn relic-btn px-2 py-1.5 rounded-lg text-xs font-semibold text-amber-200/90">남서 SW</button>
+          <button type="button" data-heading="270" class="dir-jump-btn relic-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-100">서 W</button>
+          <button type="button" data-heading="315" class="dir-jump-btn relic-btn px-2 py-1.5 rounded-lg text-xs font-semibold text-amber-200/90">북서 NW</button>
+        </div>
+
+        <!-- 3 Relic Artifact Themes -->
+        <div class="flex items-center gap-1.5">
+          <button type="button" data-theme="solar" class="theme-btn relic-btn relic-btn-active px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-200 flex items-center gap-1" title="태양의 황금 유물">
+            <span>☀️</span><span class="hidden md:inline">황금 유물</span>
+          </button>
+          <button type="button" data-theme="atlantis" class="theme-btn relic-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-cyan-200 flex items-center gap-1" title="아틀란티스 심해 유물">
+            <span>🔱</span><span class="hidden md:inline">아틀란티스</span>
+          </button>
+          <button type="button" data-theme="celestial" class="theme-btn relic-btn px-2.5 py-1.5 rounded-lg text-xs font-bold text-purple-200 flex items-center gap-1" title="별자리 마법 유물">
+            <span>🌌</span><span class="hidden md:inline">별자리 성배</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <div id="permission-modal" role="dialog" aria-modal="true" aria-labelledby="permission-title" class="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md transition-opacity duration-300">
+    <div class="relic-panel max-w-lg w-full p-5 rounded-3xl text-left max-h-[92dvh] overflow-y-auto">
+      <p class="text-xs text-amber-300 font-bold tracking-widest">COMPASS · ASTRA</p>
+      <h2 id="permission-title" class="text-xl font-bold text-amber-100 mt-2">어느 방향으로 떠나볼까요?</h2>
+      <p class="text-sm text-amber-100/85 leading-relaxed mt-2 mb-4">휴대폰을 수평에 가깝게 들고 센서를 연결하세요. 센서가 없어도 수동으로 8방위를 탐험할 수 있어요.</p>
+      <p id="env-detect-badge" class="text-xs text-cyan-200 mb-3"></p>
+      <div class="rounded-xl bg-black/30 p-3 mb-3 text-xs space-y-2">
+        <div><strong>🧭 방위 센서</strong> <span id="modal-sensor-status">꺼짐</span></div>
+        <p id="modal-sensor-detail">방위는 센서 제공 기준이며 진북 보정은 적용하지 않습니다.</p>
+        <div class="flex gap-2"><button id="btn-req-sensor" class="relic-btn px-3 py-2 rounded-lg">센서 연결</button><button id="btn-stop-sensor" class="relic-btn px-3 py-2 rounded-lg">센서 끄기</button></div>
+      </div>
+      <div class="rounded-xl bg-black/30 p-3 mb-3 text-xs space-y-2">
+        <div><strong>📍 내 위치 · 선택 사항</strong> <span id="modal-gps-status">꺼짐</span></div>
+        <p id="modal-gps-detail">좌표를 화면에 표시합니다. 위치를 켜지 않아도 나침반을 쓸 수 있어요.</p>
+        <div class="flex gap-2"><button id="btn-req-gps" class="relic-btn px-3 py-2 rounded-lg">위치 켜기</button><button id="btn-stop-gps" class="relic-btn px-3 py-2 rounded-lg">위치 끄기</button></div>
+      </div>
+      <p id="modal-feedback-msg" role="status" class="text-xs text-cyan-200 min-h-[32px] mb-3">자석·차량·금속 주변에서는 오차가 커질 수 있어요.</p>
+      <button id="btn-grant-all" class="w-full py-3 rounded-xl bg-amber-400 text-slate-950 font-bold">센서로 시작</button>
+      <button id="btn-skip-permission" class="relic-btn w-full py-3 rounded-xl text-amber-100 mt-2">수동으로 탐험하기</button>
+      <details class="text-xs text-amber-200/80 mt-4"><summary class="cursor-pointer py-2">센서 상태 자세히 보기</summary><div class="space-y-2 mt-2 break-words">
+        <p id="raw-protocol-readout"></p><p id="raw-packet-count">수신: 0회</p><p id="raw-sensor-readout">아직 수신된 방위 없음</p><p id="raw-gps-readout">아직 수신된 위치 없음</p><p id="raw-error-readout" class="text-rose-300 hidden"></p>
+      </div></details>
+      <p class="text-[11px] text-amber-100/60 mt-4">좌표·센서값은 서버에 저장하거나 전송하지 않습니다. <a href="./about.html" class="underline">사용법·개인정보 안내</a></p>
+    </div>
+  </div>
+
+  <!-- Toast Notification Banner for Missions & Sensor Status -->
+  <div role="status" id="toast-banner" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 transform -translate-y-3">
+    <div class="relic-panel px-4 py-2.5 rounded-2xl border-amber-300 text-amber-100 text-xs sm:text-sm font-bold shadow-2xl flex items-center gap-2">
+      <span id="toast-icon">✨</span>
+      <span id="toast-text">고대 유물 나침반이 깨어났습니다!</span>
+    </div>
+  </div>
+
+  <script src="./assets/compass-math.js"></script>
+  <script src="./assets/app.js"></script>
+</body>
+</html>

@@ -816,6 +816,8 @@ try {
       targetHeading = Number(e.target.value);
     });
 
+    elHeadingSlider.addEventListener('change', () => closeTools());
+
     // 8 Cardinal Direction Shortcut Buttons
     document.querySelectorAll('.dir-jump-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -824,6 +826,7 @@ try {
         updateAutoSpinBtn();
         stopSensor();
         const deg = Number(btn.getAttribute('data-heading'));
+        closeTools();
         targetHeading = deg;
         soundEngine.playTick(true);
       });
@@ -847,6 +850,7 @@ try {
       autoSpinActive = !autoSpinActive;
       updateAutoSpinBtn();
       if (autoSpinActive) {
+        closeTools();
         showToast('자동 방위 탐험 모드가 시작되었습니다!', '🔄');
       }
     });
@@ -884,36 +888,41 @@ try {
       triggerRelicAwakening();
     });
 
-    // Theme Switcher Buttons
-    document.querySelectorAll('.theme-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        soundEngine.init();
-        const themeKey = btn.getAttribute('data-theme');
-        const theme = THEMES[themeKey];
-        if (!theme) return;
-
-        document.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('relic-btn-active'));
-        btn.classList.add('relic-btn-active');
-
-        // Update 3D Materials & Dial Texture
-        dialMesh.material[1].map.dispose();
-        dialMesh.material[1].map = createCompassDialTexture(themeKey);
-        dialMesh.material[1].needsUpdate = true;
-
-        brightGoldMaterial.color.setHex(theme.primaryHex);
-        bronzeMaterial.color.setHex(theme.metalHex);
-        northCrystalMat.color.setHex(theme.crystalNorthHex);
-        northCrystalMat.emissive.setHex(theme.crystalNorthHex);
-        southCrystalMat.color.setHex(theme.crystalSouthHex);
-        southCrystalMat.emissive.setHex(theme.crystalSouthHex);
-        coreCrystalMat.color.setHex(theme.coreHex);
-        coreCrystalMat.emissive.setHex(theme.primaryHex);
-        particleMat.color.setHex(theme.coreHex);
-        mainGoldLight.color.setHex(theme.primaryHex);
-
-        document.getElementById('bg-aura').style.background = theme.auraCss;
-        triggerRelicAwakening(`🏛️ [${theme.name}] 테마가 적용되었습니다!`);
+    // All current and future appearances are selected from Settings.
+    const APPEARANCE_STORAGE_KEY = 'compass.appearance.v1';
+    function applyAppearance(themeKey, notify = true, persist = true) {
+      if (!Object.prototype.hasOwnProperty.call(THEMES, themeKey)) return;
+      const theme = THEMES[themeKey];
+      document.querySelectorAll('.theme-btn').forEach(button => {
+        const selected = button.getAttribute('data-theme') === themeKey;
+        button.classList.toggle('relic-btn-active', selected);
+        button.setAttribute('aria-pressed', String(selected));
       });
+      dialMesh.material[1].map.dispose();
+      dialMesh.material[1].map = createCompassDialTexture(themeKey);
+      dialMesh.material[1].needsUpdate = true;
+      brightGoldMaterial.color.setHex(theme.primaryHex);
+      bronzeMaterial.color.setHex(theme.metalHex);
+      northCrystalMat.color.setHex(theme.crystalNorthHex);
+      northCrystalMat.emissive.setHex(theme.crystalNorthHex);
+      southCrystalMat.color.setHex(theme.crystalSouthHex);
+      southCrystalMat.emissive.setHex(theme.crystalSouthHex);
+      coreCrystalMat.color.setHex(theme.coreHex);
+      coreCrystalMat.emissive.setHex(theme.primaryHex);
+      particleMat.color.setHex(theme.coreHex);
+      mainGoldLight.color.setHex(theme.primaryHex);
+      document.getElementById('bg-aura').style.background = theme.auraCss;
+      if (persist) {
+        try { window.localStorage.setItem(APPEARANCE_STORAGE_KEY, themeKey); }
+        catch (error) { /* Restricted storage must not prevent using the compass. */ }
+      }
+      if (notify) {
+        closeTools();
+        triggerRelicAwakening(`[${theme.name}] 디자인을 적용했어요.`);
+      }
+    }
+    document.querySelectorAll('.theme-btn').forEach(button => {
+      button.addEventListener('click', () => applyAppearance(button.getAttribute('data-theme')));
     });
 
     // =========================================================================
@@ -1331,6 +1340,9 @@ try {
     new ResizeObserver(handleResize).observe(document.getElementById('quest-box'));
     new ResizeObserver(handleResize).observe(document.getElementById('hud-top'));
     window.onload = () => {
+      let savedAppearance = 'solar';
+      try { savedAppearance = window.localStorage.getItem(APPEARANCE_STORAGE_KEY) || 'solar'; } catch (error) {}
+      applyAppearance(savedAppearance, false, false);
       handleResize();
       updateHUD(0);
       animate();

@@ -181,3 +181,11 @@ button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible {
 @media(max-width:374px) { .brand{font-size:12px;}.toolbar{gap:3px;}.tool-button{min-width:36px;padding:0 6px;}.compact-top{padding-left:10px;padding-right:10px;}.sensor-label{font-size:10px;} }
 @media(max-height:500px) and (orientation:landscape) { .heading-readout {left:auto;width:170px;right:8px;bottom:50%;transform:translateY(50%);background:none;padding:8px;} #heading-deg{font-size:34px;} #heading-dir-ko{font-size:11px;} #mode-summary{max-width:160px;text-align:center;} .quest-strip{left:12px;bottom:8px;transform:none;width:min(45%,360px);} }
 @media(prefers-reduced-motion:reduce) { .rune-ring-cw,.rune-ring-ccw,.mana-pulse{animation:none;} }
+
+.appearance-settings {margin:0;padding:0 0 12px;border:0;}
+.appearance-settings legend{font-size:13px;font-weight:700;color:#fde68a;}
+.appearance-settings p{font-size:11px;line-height:1.6;color:#a79a85;margin:7px 0 12px;}
+.appearance-options > div{display:grid;grid-template-columns:1fr;gap:8px;}
+.appearance-options .theme-btn{min-height:46px;justify-content:flex-start;padding:10px 14px;font-size:13px;}
+.appearance-options .theme-btn span{display:inline!important;}
+.appearance-options .theme-btn[aria-pressed=true]::after{content:'✓';margin-left:auto;}

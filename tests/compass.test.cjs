@@ -31,7 +31,7 @@ function harness(permission) {
   const ctx={window,document,CompassMath:math,location:{protocol:'https:'},screen:{orientation:{angle:0}},DeviceOrientationEvent:permission?{requestPermission:permission}:{},
     navigator:{geolocation:{watchPosition(ok,err){gpsSuccess=ok;gpsError=err;return 4;},clearWatch(id){cleared.push(id);}}},
     elSensorBadge:el('sensor-badge'),sensorActive:false,targetHeading:123,isDragging:false,autoSpinActive:false,targetTiltX:0,targetTiltZ:0,
-    updateAutoSpinBtn(){},showToast(){},setTimeout(){return 1;},clearTimeout(){},setInterval(){return 2;},Date,console};
+    updateAutoSpinBtn(){},closeTools(){},showToast(){},setTimeout(){return 1;},clearTimeout(){},setInterval(){return 2;},Date,console};
   vm.createContext(ctx);
   const app=fs.readFileSync(require.resolve('../assets/app.js'),'utf8');
   const section=app.slice(app.indexOf('    // 9. Hardware:'),app.indexOf('    // 10. MAIN RENDER'));

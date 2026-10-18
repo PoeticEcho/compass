@@ -366,7 +366,7 @@ try {
       if (!ctx) throw new Error('Canvas 그래픽을 사용할 수 없습니다.');
       canvas.setAttribute('aria-label', '2D 호환 나침반');
       const note = document.createElement('p');
-      note.textContent = '2D 호환 화면 · 이 브라우저는 3D 그래픽을 지원하지 않아요';
+      note.textContent = '2D 호환 화면';
       Object.assign(note.style,{position:'absolute',bottom:'4px',width:'100%',textAlign:'center',fontSize:'11px',color:'#fcd34d',pointerEvents:'none'});
       container.appendChild(note);
       let width=0,height=0,ratio=1;
@@ -376,7 +376,7 @@ try {
         setSize(w,h) { width=w;height=h;canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);canvas.style.width=`${w}px`;canvas.style.height=`${h}px`; },
         render() {
           ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);
-          const x=width/2,y=height/2,r=Math.max(30,Math.min(width,height)*0.40);
+          const x=width/2,y=height/2,r=Math.max(30,Math.min(width,height)*0.44);
           const themeKey=document.querySelector('.theme-btn.relic-btn-active')?.getAttribute('data-theme') || 'solar';
           const color=THEMES[themeKey].dialGold;
           ctx.save();ctx.translate(x,y);
@@ -857,6 +857,8 @@ try {
     const elSoundLabel = document.getElementById('sound-label');
     btnSound.addEventListener('click', () => {
       soundEngine.enabled = !soundEngine.enabled;
+      btnSound.setAttribute('aria-pressed', String(soundEngine.enabled));
+      btnSound.setAttribute('aria-label', soundEngine.enabled ? '소리 끄기' : '소리 켜기');
       if (soundEngine.enabled) {
         soundEngine.init();
         soundEngine.playTick(true);
@@ -944,10 +946,11 @@ try {
     btnQuestMode.addEventListener('click', () => {
       soundEngine.init();
       questActive = !questActive;
+      closeTools();
       if (questActive) {
         elQuestBox.classList.remove('hidden');
         btnQuestMode.classList.add('relic-btn-active');
-        elQuestBtnText.textContent = '미션 진행중';
+        elQuestBtnText.textContent = '보물 미션 종료';
         pickNextQuestTarget();
         showToast('🗺️ 보물 탐색 미션이 시작되었습니다! 목표 방위를 맞춰보세요!', '🗺️');
       } else {
@@ -956,6 +959,10 @@ try {
         elQuestBtnText.textContent = '보물 미션 시작';
         updateHUD(currentHeading);
       }
+    });
+
+    document.getElementById('btn-stop-quest').addEventListener('click', () => {
+      if (questActive) btnQuestMode.click();
     });
 
     btnUnlockRelic.addEventListener('click', () => {
@@ -984,69 +991,34 @@ try {
       }
     });
 
-    // =========================================================================
-    // 8. FULLSCREEN & CLEAN HUD TOGGLE
-    // =========================================================================
+    // 8. Secondary tools are opt-in; the compass keeps its full layout.
+    const toolsPanel = document.getElementById('tools-panel');
+    const toolsButton = document.getElementById('btn-tools');
+    function closeTools() {
+      if (toolsPanel.open) toolsPanel.close();
+    }
+    toolsButton.addEventListener('click', () => toolsPanel.showModal());
+    document.getElementById('btn-close-tools').addEventListener('click', closeTools);
+    toolsPanel.addEventListener('click', event => {
+      if (event.target === toolsPanel) {
+        const rect = toolsPanel.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeTools();
+      }
+    });
     const btnFullscreen = document.getElementById('btn-fullscreen');
     const elFsLabel = document.getElementById('fs-label');
-    const btnToggleHud = document.getElementById('btn-toggle-hud');
-    const elHudToggleLabel = document.getElementById('hud-toggle-label');
-    let hudVisible = true;
-
-    function toggleHudVisibility(forceState) {
-      hudVisible = typeof forceState === 'boolean' ? forceState : !hudVisible;
-      const hudIds = ['hud-top', 'hud-bottom', 'hud-side'];
-      hudIds.forEach((id) => {
-        const el = document.getElementById(id);
-        el.inert = !hudVisible;
-        if (hudVisible) {
-          el.classList.remove('hud-hidden');
-        } else {
-          el.classList.add('hud-hidden');
-        }
-      });
-      elHudToggleLabel.textContent = hudVisible ? '유물만 보기' : '메뉴 펼치기';
-      btnToggleHud.classList.toggle('relic-btn-active', !hudVisible);
-      document.getElementById('heading-marker').hidden = !hudVisible;
-      handleResize();
-    }
-
-    btnToggleHud.addEventListener('click', () => {
-      soundEngine.init();
-      toggleHudVisibility();
-      if (!hudVisible) {
-        showToast('전체 3D 유물 감상 모드입니다. 우측 상단 버튼으로 메뉴를 다시 열 수 있어요!', '👁️');
-      }
-    });
-
     btnFullscreen.addEventListener('click', async () => {
-      soundEngine.init();
       try {
-        if (!document.fullscreenElement) {
-          if (document.documentElement.requestFullscreen) {
-            await document.documentElement.requestFullscreen();
-            elFsLabel.textContent = '전체화면 종료';
-            showToast('전체화면 모드로 전환되었습니다!', '⛶');
-          } else {
-            toggleHudVisibility(false);
-            showToast('화면을 가득 채운 몰입형 유물 뷰로 전환되었습니다!', '⛶');
-          }
-        } else {
-          if (document.exitFullscreen) {
-            await document.exitFullscreen();
-            elFsLabel.textContent = '전체화면';
-          }
-        }
-      } catch (err) {
-        // Fallback inside restricted iframe containers: maximize 3D view cleanly
-        toggleHudVisibility(!hudVisible);
-        elFsLabel.textContent = hudVisible ? '전체화면' : '기본화면';
-        showToast(hudVisible ? '기본 화면 모드로 돌아왔습니다.' : '몰입형 전체화면 뷰로 전환되었습니다!', '⛶');
-      }
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+        else showToast('이 브라우저에서는 전체화면을 지원하지 않아요.', '⛶');
+      } catch (error) { showToast('전체화면을 열지 못했어요.', '⛶'); }
     });
-
     document.addEventListener('fullscreenchange', () => {
-      elFsLabel.textContent = document.fullscreenElement ? '전체화면 종료' : '전체화면';
+      const label = document.fullscreenElement ? '전체화면 종료' : '전체화면';
+      elFsLabel.textContent = label;
+      btnFullscreen.setAttribute('aria-label', label);
+      handleResize();
     });
 
     // 9. Hardware: orientation only controls heading; location is display-only.
@@ -1076,10 +1048,15 @@ try {
       (modalOpener || document.getElementById('btn-sensor')).focus();
     }
     function openPermissionModal() {
+      closeTools();
       closeOnSensor = false;
       modalOpener = document.activeElement;
       elPermissionModal.classList.remove('hidden');
       document.getElementById('btn-grant-all').focus();
+    }
+    function setModeSummary(text, active = false) {
+      document.getElementById('mode-summary').textContent = text;
+      document.getElementById('btn-sensor').ariaPressed = String(active);
     }
     function stopSensor(message = '🎮 수동 탐험 · 센서 꺼짐') {
       sensorRequested = false;
@@ -1091,6 +1068,7 @@ try {
       lastSensorAt = 0;
       elSensorBadge.textContent = message;
       elModalSensorStatus.textContent = '꺼짐';
+      setModeSummary('수동 탐험 · 센서 미연결');
     }
     function handleOrientation(event) {
       if (!sensorRequested) return;
@@ -1109,6 +1087,7 @@ try {
       if (hardwareEventsReceived === 1 || hardwareEventsReceived % 10 === 0) {
         elSensorBadge.textContent = `🧭 센서 방위 ${Math.round(deg) % 360}° · 진북 보정 없음`;
         elModalSensorStatus.textContent = '수신 중';
+        setModeSummary('센서 연결됨 · 진북 보정 없음', true);
         elModalSensorDetail.textContent = '기기를 수평에 가깝게 유지하세요. 브라우저 제공 방위를 사용합니다.';
         document.getElementById('raw-packet-count').textContent = `수신: ${hardwareEventsReceived}회`;
         document.getElementById('raw-sensor-readout').textContent = `${typeof event.webkitCompassHeading === 'number' ? 'iOS 나침반' : '절대방위'} · ${deg.toFixed(1)}° · 화면 ${angle}°`;
@@ -1134,6 +1113,7 @@ try {
       updateAutoSpinBtn();
       const generation = sensorGeneration;
       elModalSensorStatus.textContent = '연결 중';
+      setModeSummary('센서 연결 중…');
       elModalFeedbackMsg.textContent = '권한 요청이 표시되면 허용해주세요. 안드로이드는 별도 팝업이 없을 수 있어요.';
       elRawErrorReadout.classList.add('hidden');
       const attach = () => {
@@ -1210,7 +1190,7 @@ try {
     });
     document.getElementById('btn-sensor').addEventListener('click', openPermissionModal);
     elPermissionModal.addEventListener('keydown', event => {
-      if (event.key === 'Escape') { stopSensor(); closePermissionModal(); }
+      if (event.key === 'Escape') { if (!sensorActive) stopSensor(); closePermissionModal(); }
       if (event.key === 'Tab') {
         const nodes = [...elPermissionModal.querySelectorAll('button, a, summary')].filter(el => el.getClientRects().length);
         const first = nodes[0], last = nodes[nodes.length - 1];
@@ -1218,12 +1198,13 @@ try {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
       }
     });
-    setTimeout(() => document.getElementById('btn-grant-all').focus(), 0);
+
     setInterval(() => {
       if (sensorRequested && lastSensorAt && Date.now() - lastSensorAt > 5000) {
         sensorActive = false;
         elSensorBadge.textContent = '⚠️ 센서 신호 대기 · 마지막 방위';
         elModalSensorStatus.textContent = '신호 대기';
+        setModeSummary('센서 신호 대기 · 마지막 방위');
       }
       if (gpsWatchId !== null && lastFixAt && Date.now() - lastFixAt > 30000) {
         elGpsBadge.textContent = '⚠️ 위치 갱신 대기 · 마지막 좌표';
@@ -1321,29 +1302,33 @@ try {
     // Responsive Resize Handling
     function handleResize() {
       const top = document.getElementById('hud-top').getBoundingClientRect().bottom;
-      const bottom = document.getElementById('hud-bottom').getBoundingClientRect().height;
-      const side = document.getElementById('hud-side').getBoundingClientRect().height;
-      const mobile = window.innerWidth < 1024;
-      document.documentElement.style.setProperty('--side-bottom', `${bottom + 6}px`);
-      const insetTop = hudVisible ? top + 4 : 0;
-      const available = Math.max(120, window.innerHeight - insetTop - (hudVisible ? bottom + (mobile ? side + 10 : 0) : 0));
+      const readout = document.getElementById('hud-bottom').getBoundingClientRect();
+      const mission = document.getElementById('quest-box');
+      const missionHeight = mission.classList.contains('hidden') ? 0 : mission.getBoundingClientRect().height + 10;
+      const landscape = window.innerHeight < 500 && window.innerWidth > window.innerHeight;
+      const insetTop = top + 8;
+      const bottom = landscape ? 8 : readout.height + 8;
+      const h = Math.max(100, window.innerHeight - insetTop - bottom - missionHeight);
+      const w = landscape ? Math.max(160, window.innerWidth - 190) : window.innerWidth;
       container.style.top = `${insetTop}px`;
-      container.style.height = `${available}px`;
-      document.documentElement.style.setProperty('--marker-top', `${insetTop + 3}px`);
-      const w = container.clientWidth;
-      const h = available;
+      container.style.width = `${w}px`;
+      container.style.height = `${h}px`;
+      document.documentElement.style.setProperty('--readout-height', `${readout.height + 8}px`);
+      document.documentElement.style.setProperty('--marker-top', `${insetTop + h / 2 - Math.min(w,h) * 0.44 - 12}px`);
+      // Fit the complete artifact to the smaller viewport axis, with a near-overhead view.
       camera.aspect = w / h;
-      // Adjust camera distance automatically so the 3D compass fits portrait mobile & landscape desktop
-      const aspectFactor = w < h ? Math.min(1.45, (h / w) * 0.72) : 1.0;
-      camera.position.set(0, 7.0 * aspectFactor, 5.4 * aspectFactor);
-      camera.lookAt(0, -0.15, 0);
+      const verticalFov = camera.fov * Math.PI / 180;
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+      const distance = 3.95 / Math.sin(Math.min(verticalFov, horizontalFov) / 2);
+      camera.position.set(0, distance * 0.955, distance * 0.296);
+      camera.lookAt(0, 0.05, 0);
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     }
 
     window.addEventListener('resize', handleResize);
     new ResizeObserver(handleResize).observe(document.getElementById('hud-bottom'));
-    new ResizeObserver(handleResize).observe(document.getElementById('hud-side'));
+    new ResizeObserver(handleResize).observe(document.getElementById('quest-box'));
     new ResizeObserver(handleResize).observe(document.getElementById('hud-top'));
     window.onload = () => {
       handleResize();
